@@ -41,7 +41,11 @@ class MainActivity : ComponentActivity() {
                             modifier = mod
                         )
                         Tela.ATALHOS -> AtalhosScreen(onVoltar = voltar, modifier = mod)
-                        Tela.WIN_RUN -> WinRunScreen(onVoltar = voltar, modifier = mod)
+                        Tela.WIN_RUN -> WinRunScreen(
+                            onVoltar = voltar,
+                            onNavegar = { telaAtual = it },
+                            modifier = mod
+                        )
                         Tela.TERMINAL_LINUX -> TerminalLinuxScreen(onVoltar = voltar, modifier = mod)
                     }
                 }

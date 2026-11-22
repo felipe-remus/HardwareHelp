@@ -1,10 +1,10 @@
 package com.felipe.cadernodehardware.ui
 
 enum class Tela(val comandos: List<String>) {
-    TERMINAL(emptyList()),
+    TERMINAL(listOf("cmd")),
     ATALHOS(listOf("atalhos")),
     WIN_RUN(listOf("win run", "winrun")),
-    TERMINAL_LINUX(listOf("terminal linux"));
+    TERMINAL_LINUX(listOf("terminal linux", "linux terminal", "linux"));
 
     companion object {
         fun deComando(texto: String): Tela? {
