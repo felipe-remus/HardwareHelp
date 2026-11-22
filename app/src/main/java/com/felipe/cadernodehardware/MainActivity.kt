@@ -46,7 +46,11 @@ class MainActivity : ComponentActivity() {
                             onNavegar = { telaAtual = it },
                             modifier = mod
                         )
-                        Tela.TERMINAL_LINUX -> TerminalLinuxScreen(onVoltar = voltar, modifier = mod)
+                        Tela.TERMINAL_LINUX -> TerminalLinuxScreen(
+                            onVoltar = voltar,
+                            onNavegar = { telaAtual = it },
+                            modifier = mod
+                        )
                     }
                 }
             }
