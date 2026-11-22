@@ -1,6 +1,7 @@
 package com.felipe.cadernodehardware.ui
 
 enum class Tela(val comandos: List<String>) {
+    INICIO(listOf("inicio")),
     TERMINAL(listOf("cmd")),
     ATALHOS(listOf("atalhos")),
     WIN_RUN(listOf("win run", "winrun")),

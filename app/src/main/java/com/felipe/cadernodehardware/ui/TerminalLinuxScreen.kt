@@ -33,15 +33,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.felipe.cadernodehardware.ui.dados.explicarComandoLinux
+import com.felipe.cadernodehardware.ui.dados.precisaDeRoot
 
 // Cores no estilo do terminal do Ubuntu
 private val LinuxFundo = Color(0xFF300A24)
@@ -51,7 +54,8 @@ private val LinuxVerde = Color(0xFF8AE234)
 private val LinuxAzul = Color(0xFF729FCF)
 private val LinuxFechar = Color(0xFFE95420)
 
-private const val USUARIO = "felipe@linux-desktop"
+private const val MAQUINA = "linux-desktop"
+private const val USUARIO_NORMAL = "felipe"
 private const val PASTA = "~"
 
 @Composable
@@ -62,12 +66,12 @@ fun TerminalLinuxScreen(
 ) {
     BackHandler { onVoltar() }
 
-    // Cada linha já guarda o texto pronto (com cores)
-    val linhas = remember {
-        mutableStateListOf<androidx.compose.ui.text.AnnotatedString>()
-    }
-
+    val linhas = remember { mutableStateListOf<AnnotatedString>() }
     var comandoAtual by remember { mutableStateOf("") }
+
+    // true = modo administrador (prompt com #)
+    var modoRoot by remember { mutableStateOf(false) }
+
     val estadoLista = rememberLazyListState()
 
     LaunchedEffect(linhas.size) {
@@ -80,17 +84,81 @@ fun TerminalLinuxScreen(
         fontSize = 14.sp
     )
 
-    // Monta o prompt colorido: usuario@maquina:~$
-    fun promptColorido(comando: String) = buildAnnotatedString {
+    // Monta o prompt colorido. Normal: felipe@linux-desktop:~$   Root: root@linux-desktop:~#
+    fun promptColorido(comando: String, root: Boolean) = buildAnnotatedString {
+        val usuario = if (root) "root" else USUARIO_NORMAL
+        val simbolo = if (root) "#" else "$"
         withStyle(SpanStyle(color = LinuxVerde, fontWeight = FontWeight.Bold)) {
-            append(USUARIO)
+            append("$usuario@$MAQUINA")
         }
         withStyle(SpanStyle(color = LinuxTexto)) { append(":") }
         withStyle(SpanStyle(color = LinuxAzul, fontWeight = FontWeight.Bold)) {
             append(PASTA)
         }
-        withStyle(SpanStyle(color = LinuxTexto)) { append("$ $comando") }
+        withStyle(SpanStyle(color = LinuxTexto)) { append("$simbolo $comando") }
     }
+
+    fun texto(t: String) = buildAnnotatedString { append(t) }
+
+    // O que acontece ao apertar Enter
+    fun executar() {
+        val digitado = comandoAtual.trim()
+        val limpo = digitado.lowercase().replace(Regex("\\s+"), " ")
+
+        // Linha do comando usa o prompt de ANTES da execução
+        val linhaDoComando = promptColorido(comandoAtual, modoRoot)
+
+        if (limpo == "clear") {
+            linhas.clear()
+        } else if (digitado.isEmpty()) {
+            linhas.add(linhaDoComando)
+        } else if (modoRoot && (limpo == "exit" || limpo == "logout")) {
+            // Sai do modo administrador
+            linhas.add(linhaDoComando)
+            linhas.add(texto("exit"))
+            modoRoot = false
+        } else if (limpo in listOf("su", "su -", "su root", "sudo su", "sudo su -", "sudo -i", "sudo -s", "sudo bash")) {
+            // Entra no modo administrador
+            linhas.add(linhaDoComando)
+            if (!modoRoot) {
+                if (limpo.startsWith("sudo")) linhas.add(texto("[sudo] senha para $USUARIO_NORMAL: "))
+                else linhas.add(texto("Senha: "))
+                linhas.add(texto("Agora você é root: o prompt mostra # no lugar de \$."))
+            } else {
+                linhas.add(texto("Você já é root."))
+            }
+            modoRoot = true
+        } else if (limpo == "sudo") {
+            linhas.add(linhaDoComando)
+            linhas.add(texto(explicarComandoLinux("sudo") ?: ""))
+        } else if (limpo.startsWith("sudo ")) {
+            // sudo + outro comando: roda como administrador, mas o prompt continua normal
+            val resto = digitado.substringAfter(" ").trim()
+            linhas.add(linhaDoComando)
+            if (!modoRoot) linhas.add(texto("[sudo] senha para $USUARIO_NORMAL: "))
+            val explicacao = explicarComandoLinux(resto)
+            if (explicacao != null) {
+                linhas.add(texto("(executado como administrador) $explicacao"))
+            } else {
+                linhas.add(texto("sudo: ${resto.substringBefore(" ")}: comando não encontrado"))
+            }
+        } else if (!modoRoot && precisaDeRoot(digitado)) {
+            // Comando que exige privilégios, sem sudo
+            linhas.add(linhaDoComando)
+            linhas.add(texto("Permissão negada. Este comando precisa de privilégios: tente com sudo."))
+        } else {
+            linhas.add(linhaDoComando)
+            val explicacao = explicarComandoLinux(digitado)
+            if (explicacao != null) {
+                linhas.add(texto(explicacao))
+            } else {
+                linhas.add(texto("${digitado.substringBefore(" ")}: comando não encontrado"))
+            }
+        }
+        comandoAtual = ""
+    }
+
+    val usuarioAtual = if (modoRoot) "root" else USUARIO_NORMAL
 
     Column(
         modifier = modifier
@@ -107,7 +175,7 @@ fun TerminalLinuxScreen(
         ) {
             Spacer(modifier = Modifier.weight(1f))
             Text(
-                text = "$USUARIO: $PASTA",
+                text = "$usuarioAtual@$MAQUINA: $PASTA",
                 style = estiloTexto.copy(fontFamily = FontFamily.SansSerif, fontSize = 13.sp)
             )
             Spacer(modifier = Modifier.weight(1f))
@@ -156,10 +224,7 @@ fun TerminalLinuxScreen(
 
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = promptColorido(""),
-                        style = estiloTexto
-                    )
+                    Text(text = promptColorido("", modoRoot), style = estiloTexto)
                     Spacer(modifier = Modifier.width(6.dp))
                     BasicTextField(
                         value = comandoAtual,
@@ -168,31 +233,13 @@ fun TerminalLinuxScreen(
                         cursorBrush = SolidColor(LinuxTexto),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                        keyboardActions = KeyboardActions(
-                            onSend = {
-                                val tela = Tela.deComando(comandoAtual)
-                                if (tela == Tela.TERMINAL_LINUX) {
-                                    // Já está nesta tela: só limpa
-                                    comandoAtual = ""
-                                } else if (tela != null) {
-                                    comandoAtual = ""
-                                    onNavegar(tela)
-                                } else if (comandoAtual.trim() == "clear") {
-                                    linhas.clear()
-                                    comandoAtual = ""
-                                } else {
-                                    linhas.add(promptColorido(comandoAtual))
-                                    linhas.add(
-                                        buildAnnotatedString { append("(resposta em breve)") }
-                                    )
-                                    comandoAtual = ""
-                                }
-                            }
-                        ),
+                        keyboardActions = KeyboardActions(onSend = { executar() }),
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
         }
+
+        BarraNavegacao(telaAtual = Tela.TERMINAL_LINUX, onNavegar = onNavegar)
     }
 }

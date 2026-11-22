@@ -35,6 +35,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.felipe.cadernodehardware.ui.dados.explicarComandoWinRun
 
 private val WinJanela = Color(0xFFF3F3F3)
 private val WinTopo = Color(0xFFFFFFFF)
@@ -50,15 +51,16 @@ fun WinRunScreen(
 
     var texto by remember { mutableStateOf("") }
     var erro by remember { mutableStateOf(false) }
+    var resultado by remember { mutableStateOf<String?>(null) }
 
-    // O que acontece ao apertar Enter ou OK
     fun executar() {
-        val tela = Tela.deComando(texto)
-        if (tela != null) {
-            texto = ""
+        if (texto.isBlank()) return
+        val explicacao = explicarComandoWinRun(texto)
+        if (explicacao != null) {
+            resultado = explicacao
             erro = false
-            onNavegar(tela)
-        } else if (texto.isNotBlank()) {
+        } else {
+            resultado = null
             erro = true
         }
     }
@@ -145,6 +147,7 @@ fun WinRunScreen(
                         onValueChange = {
                             texto = it
                             erro = false
+                            resultado = null
                         },
                         singleLine = true,
                         textStyle = TextStyle(color = Color.Black, fontSize = 14.sp),
@@ -165,6 +168,14 @@ fun WinRunScreen(
                     color = Color(0xFFC42B1C)
                 )
             }
+            resultado?.let {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = it,
+                    fontSize = 14.sp,
+                    color = Color(0xFF0067C0)
+                )
+            }
         }
 
         // Rodapé com botões
@@ -178,6 +189,8 @@ fun WinRunScreen(
             BotaoWin("Cancelar", onClick = onVoltar)
             BotaoWin("Procurar...")
         }
+        Spacer(modifier = Modifier.weight(1f))
+        BarraNavegacao(telaAtual = Tela.WIN_RUN, onNavegar = onNavegar)
     }
 }
 

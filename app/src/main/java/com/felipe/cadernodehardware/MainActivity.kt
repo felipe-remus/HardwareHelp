@@ -19,6 +19,7 @@ import com.felipe.cadernodehardware.ui.TerminalLinuxScreen
 import com.felipe.cadernodehardware.ui.TerminalScreen
 import com.felipe.cadernodehardware.ui.WinRunScreen
 import com.felipe.cadernodehardware.ui.theme.CadernoDeHardwareTheme
+import com.felipe.cadernodehardware.ui.InicioScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,21 +27,30 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             CadernoDeHardwareTheme {
-                var telaAtual by remember { mutableStateOf(Tela.TERMINAL) }
+                var telaAtual by remember { mutableStateOf(Tela.INICIO) }
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     val mod = Modifier
                         .padding(innerPadding)
                         .imePadding()
-                    val voltar = { telaAtual = Tela.TERMINAL }
+                    val voltar = { telaAtual = Tela.INICIO }
 
                     when (telaAtual) {
-                        Tela.TERMINAL -> TerminalScreen(
+                        Tela.INICIO -> InicioScreen(
                             onNavegar = { telaAtual = it },
                             onSair = { finish() },
                             modifier = mod
                         )
-                        Tela.ATALHOS -> AtalhosScreen(onVoltar = voltar, modifier = mod)
+                        Tela.TERMINAL -> TerminalScreen(
+                            onNavegar = { telaAtual = it },
+                            onSair = { telaAtual = Tela.INICIO },
+                            modifier = mod
+                        )
+                        Tela.ATALHOS -> AtalhosScreen(
+                            onVoltar = voltar,
+                            onNavegar = { telaAtual = it },
+                            modifier = mod
+                        )
                         Tela.WIN_RUN -> WinRunScreen(
                             onVoltar = voltar,
                             onNavegar = { telaAtual = it },

@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.felipe.cadernodehardware.ui.dados.explicarComandoCmd
 
 // Cores no estilo do Windows Terminal
 private val CmdFundo = Color(0xFF0C0C0C)
@@ -184,16 +185,27 @@ fun TerminalScreen(
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                         keyboardActions = KeyboardActions(
                             onSend = {
-                                val tela = Tela.deComando(comandoAtual)
-                                if (tela != null) {
-                                    comandoAtual = ""
-                                    onNavegar(tela)
+                                val digitado = comandoAtual.trim()
+
+                                if (digitado.lowercase() == "cls") {
+                                    // cls limpa a tela, como no CMD de verdade
+                                    linhas.clear()
                                 } else {
+                                    // Mostra o que foi digitado
                                     linhas.add("$PROMPT$comandoAtual")
-                                    linhas.add("(resposta em breve)")
-                                    linhas.add("")
-                                    comandoAtual = ""
+
+                                    if (digitado.isNotEmpty()) {
+                                        val explicacao = explicarComandoCmd(digitado)
+                                        if (explicacao != null) {
+                                            linhas.add(explicacao)
+                                        } else {
+                                            val nome = digitado.substringBefore(" ")
+                                            linhas.add("'$nome' não é reconhecido como um comando interno ou externo, um programa operável ou um arquivo em lotes.")
+                                        }
+                                        linhas.add("")
+                                    }
                                 }
+                                comandoAtual = ""
                             }
                         ),
                         modifier = Modifier.fillMaxWidth()
@@ -201,5 +213,6 @@ fun TerminalScreen(
                 }
             }
         }
+        BarraNavegacao(telaAtual = Tela.TERMINAL, onNavegar = onNavegar)
     }
 }
